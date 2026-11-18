@@ -1,0 +1,172 @@
+// Schema `app`. Rokayya owns Prisma tooling (SCRUM-19).
+// The ticket that writes a table adds that table's migration.
+// Columns below are the ones the current tickets name. Do not add a column here
+// that `10-database-erd.md` does not name.
+// Session, invitation, seal-idempotency, and the NestJS clip_ref copy are private
+// layouts. The camera stream object is stored by SCRUM-119; its table shape is Rokayya's.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["app"]
+}
+
+model Organization {
+  id           String         @id @default(uuid()) @db.Uuid
+  name         String
+  kind         String
+  memberships  Membership[]
+  sites        Site[]
+  cameras      Camera[]
+  searchQueries SearchQuery[]
+  alerts       Alert[]
+
+  @@map("organizations")
+  @@schema("app")
+}
+
+model User {
+  id           String         @id @default(uuid()) @db.Uuid
+  email        String
+  passwordHash String         @map("password_hash")
+  fullName     String         @map("full_name")
+  disabled     Boolean
+  memberships  Membership[]
+  cameraGrants CameraGrant[]
+
+  @@map("users")
+  @@schema("app")
+}
+
+// The ticket names these three columns and no separate id.
+model Membership {
+  userId         String       @map("user_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  role           String
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@id([userId, organizationId])
+  @@map("memberships")
+  @@schema("app")
+}
+
+// No organization_id. No other column.
+model CameraGrant {
+  userId   String @map("user_id") @db.Uuid
+  cameraId String @map("camera_id") @db.Uuid
+  user     User   @relation(fields: [userId], references: [id])
+  camera   Camera @relation(fields: [cameraId], references: [id])
+
+  @@id([userId, cameraId])
+  @@map("camera_grants")
+  @@schema("app")
+}
+
+model Site {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  cameras        Camera[]
+
+  @@map("sites")
+  @@schema("app")
+}
+
+model Camera {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  siteId         String        @map("site_id") @db.Uuid
+  displayName    String        @map("display_name")
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  site           Site          @relation(fields: [siteId], references: [id])
+  grants         CameraGrant[]
+  videos         Video[]
+  alerts         Alert[]
+
+  @@map("cameras")
+  @@schema("app")
+}
+
+// state: pending_dispatch | queued | running | ready | failed
+// stage: probe | index | null
+// media_info, when set: { duration_ms, width, height, fps, codec }
+model Video {
+  id               String         @id @default(uuid()) @db.Uuid
+  cameraId         String         @map("camera_id") @db.Uuid
+  filename         String
+  contentType      String         @map("content_type")
+  sizeBytes        BigInt         @map("size_bytes")
+  recordedStartUtc DateTime?      @map("recorded_start_utc") @db.Timestamptz(6)
+  mediaRef         String         @map("media_ref")
+  state            String
+  stage            String?
+  mediaInfo        Json?          @map("media_info")
+  camera           Camera         @relation(fields: [cameraId], references: [id])
+  searchResults    SearchResult[]
+
+  @@map("videos")
+  @@schema("app")
+}
+
+// Further columns are Labib's, SCRUM-133.
+model CallbackReceipt {
+  source       String
+  resourceType String @map("resource_type")
+  resourceId   String @map("resource_id")
+  sequence     Int
+
+  @@id([source, resourceType, resourceId, sequence])
+  @@map("callback_receipts")
+  @@schema("app")
+}
+
+model SearchQuery {
+  searchId       String         @id @map("search_id") @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  queryText      String         @map("query_text")
+  createdAt      DateTime       @map("created_at") @db.Timestamptz(6)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  results        SearchResult[]
+
+  @@map("search_queries")
+  @@schema("app")
+}
+
+// Public JSON does not include search_id or score. No organization_id. No processing_run_id.
+model SearchResult {
+  resultId        String      @id @map("result_id") @db.Uuid
+  searchId        String      @map("search_id") @db.Uuid
+  videoId         String      @map("video_id") @db.Uuid
+  matchStartMs    Int         @map("match_start_ms")
+  matchEndMs      Int         @map("match_end_ms")
+  playbackStartMs Int         @map("playback_start_ms")
+  playbackEndMs   Int         @map("playback_end_ms")
+  rank            Int
+  search          SearchQuery @relation(fields: [searchId], references: [searchId])
+  video           Video       @relation(fields: [videoId], references: [id])
+
+  @@map("search_results")
+  @@schema("app")
+}
+
+model Alert {
+  alertId         String       @id @map("alert_id") @db.Uuid
+  cameraId        String       @map("camera_id") @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  label           String
+  externalEventId String       @map("external_event_id")
+  openedAt        DateTime     @map("opened_at") @db.Timestamptz(6)
+  status          String
+  camera          Camera       @relation(fields: [cameraId], references: [id])
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, externalEventId])
+  @@map("alerts")
+  @@schema("app")
+}

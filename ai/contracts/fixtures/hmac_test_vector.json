@@ -1,0 +1,7 @@
+{
+  "secret": "test-secret",
+  "timestamp": "1730600000",
+  "method": "POST",
+  "path": "/internal/v1/processing-jobs",
+  "raw_body": "{\"a\":1}"
+}
