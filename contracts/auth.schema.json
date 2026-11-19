@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AuthContracts",
+  "$defs": {
+    "LoginRequest": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "Permission": {
+      "type": "string",
+      "enum": [
+        "platform.manage",
+        "org.read",
+        "org.manage",
+        "members.manage",
+        "cameras.read",
+        "cameras.manage",
+        "videos.read",
+        "videos.upload",
+        "videos.manage",
+        "media.playback",
+        "live.view",
+        "search.run",
+        "cases.read",
+        "cases.write",
+        "cases.export",
+        "alerts.read",
+        "alerts.manage",
+        "audit.read"
+      ]
+    },
+    "Me": {
+      "type": "object",
+      "required": [
+        "id",
+        "email",
+        "full_name",
+        "is_platform_admin",
+        "organization",
+        "role",
+        "permissions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "is_platform_admin": {
+          "type": "boolean"
+        },
+        "organization": {
+          "type": ["object", "null"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "role": {
+          "type": ["string", "null"],
+          "enum": ["org_admin", "investigator", "auditor", null]
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Permission"
+          }
+        }
+      }
+    },
+    "LoginData": {
+      "type": "object",
+      "required": ["access_token", "token_type", "expires_in", "user"],
+      "properties": {
+        "access_token": {
+          "type": "string"
+        },
+        "token_type": {
+          "type": "string",
+          "enum": ["Bearer"]
+        },
+        "expires_in": {
+          "type": "integer"
+        },
+        "user": {
+          "$ref": "#/$defs/Me"
+        }
+      }
+    },
+    "LoginResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/LoginData"
+        }
+      }
+    }
+  }
+}

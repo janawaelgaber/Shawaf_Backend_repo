@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LiveEventContracts",
+  "$defs": {
+    "LiveEventLabelName": {
+      "type": "string",
+      "enum": ["fight", "fall", "running", "crowd_formation", "fire"]
+    },
+    "LiveEventCallback": {
+      "type": "object",
+      "required": [
+        "camera_id",
+        "organization_id",
+        "label",
+        "score",
+        "external_event_id",
+        "sequence",
+        "sent_at"
+      ],
+      "properties": {
+        "camera_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "$ref": "#/$defs/LiveEventLabelName"
+        },
+        "score": {
+          "type": "number"
+        },
+        "external_event_id": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sent_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CallbackContracts",
+  "$defs": {
+    "PipelineStage": {
+      "type": "string",
+      "enum": ["probe", "index"]
+    },
+    "MediaInfo": {
+      "type": "object",
+      "required": ["duration_ms", "width", "height", "fps", "codec"],
+      "properties": {
+        "duration_ms": {
+          "type": "integer"
+        },
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "codec": {
+          "type": "string"
+        }
+      }
+    },
+    "ProgressCallback": {
+      "type": "object",
+      "required": ["job_id", "sequence", "sent_at", "stage"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "stage": {
+          "$ref": "#/$defs/PipelineStage"
+        }
+      }
+    },
+    "CompletedCallback": {
+      "type": "object",
+      "required": ["job_id", "sequence", "sent_at", "media_info"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "media_info": {
+          "$ref": "#/$defs/MediaInfo"
+        }
+      }
+    },
+    "FailedCallback": {
+      "type": "object",
+      "required": ["job_id", "sequence", "sent_at", "failed_stage", "error"],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "failed_stage": {
+          "$ref": "#/$defs/PipelineStage"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "ClipStatusCallback": {
+      "type": "object",
+      "required": ["clip_job_id", "sequence", "state"],
+      "properties": {
+        "clip_job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string",
+          "enum": ["ready", "failed"]
+        },
+        "clip_ref": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "AckEnvelope": {
+      "type": "object",
+      "required": ["data"],
+      "properties": {
+        "data": {
+          "type": "object",
+          "required": ["accepted", "duplicate"],
+          "properties": {
+            "accepted": {
+              "type": "boolean"
+            },
+            "duplicate": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}

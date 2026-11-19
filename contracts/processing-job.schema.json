@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProcessingJobRequest",
+  "type": "object",
+  "required": [
+    "job_id",
+    "organization_id",
+    "video_id",
+    "camera_id",
+    "media_ref",
+    "content_type",
+    "size_bytes",
+    "pipeline_version",
+    "attempt",
+    "requested_at"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "organization_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "video_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "camera_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "media_ref": {
+      "type": "string"
+    },
+    "content_type": {
+      "type": "string"
+    },
+    "size_bytes": {
+      "type": "integer"
+    },
+    "recorded_start_utc": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "pipeline_version": {
+      "type": "string"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

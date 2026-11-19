@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SearchContracts",
+  "$defs": {
+    "InternalSearchRequest": {
+      "type": "object",
+      "required": [
+        "search_id",
+        "organization_id",
+        "query_text",
+        "authorized_video_ids",
+        "identity_reference",
+        "include_tentative",
+        "limit"
+      ],
+      "properties": {
+        "search_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organization_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "query_text": {
+          "type": "string"
+        },
+        "authorized_video_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "identity_reference": {
+          "type": ["object", "null"]
+        },
+        "include_tentative": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "SearchHit": {
+      "type": "object",
+      "required": ["video_id", "match_start_ms", "match_end_ms", "score"],
+      "properties": {
+        "video_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "match_start_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "match_end_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "score": {
+          "type": "number"
+        }
+      }
+    },
+    "InternalSearchEnvelope": {
+      "type": "object",
+      "required": ["data"],
+      "properties": {
+        "data": {
+          "type": "object",
+          "required": ["hits"],
+          "properties": {
+            "hits": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SearchHit"
+              }
+            }
+          }
+        }
+      }
+    },
+    "SearchResult": {
+      "type": "object",
+      "required": [
+        "result_id",
+        "video_id",
+        "match_start_ms",
+        "match_end_ms",
+        "playback_start_ms",
+        "playback_end_ms",
+        "rank"
+      ],
+      "properties": {
+        "result_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "video_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "match_start_ms": {
+          "type": "integer"
+        },
+        "match_end_ms": {
+          "type": "integer"
+        },
+        "playback_start_ms": {
+          "type": "integer"
+        },
+        "playback_end_ms": {
+          "type": "integer"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": ["score"]
+          },
+          {
+            "required": ["search_id"]
+          }
+        ]
+      }
+    }
+  }
+}
