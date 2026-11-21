@@ -83,7 +83,7 @@ The processes start. The ticket handlers are still empty. Each member fills the 
 docker compose -f deployment/docker-compose.yml up -d
 ```
 
-Copy `.env.example` to `.env` in `apps/backend` before using Prisma. NestJS does not need the database just to boot.
+Copy `deployment/.env.example` to `deployment/.env` before using Prisma. NestJS does not need the database just to boot.
 
 ```bash
 cd apps/backend

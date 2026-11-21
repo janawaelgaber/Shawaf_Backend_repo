@@ -21,8 +21,11 @@ jobs:
           DATABASE_URL: postgresql://shawaf_app:shawaf_app@localhost:5432/shawaf?schema=app
       - run: npm run build
 
-  inference:
+inference:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
