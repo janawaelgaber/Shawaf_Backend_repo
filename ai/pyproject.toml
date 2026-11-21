@@ -19,8 +19,9 @@ dependencies = [
 dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]
+where = [".."]
 include = ["ai*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["ai/tests"]
+pythonpath = [".."]
+testpaths = ["tests"]
