@@ -11,19 +11,35 @@ servers:
   - url: http://inference-api:8000/internal/v1
   - url: http://localhost:8000/internal/v1
 security:
-  - hmac: []
+  - shawafService: []
+    shawafTimestamp: []
+    hmac: []
+    requestId: []
 paths:
+  /health/live:
+    get:
+      summary: Inference liveness
+      operationId: aiHealthLive
+      description: Process liveness check. Does not check external dependencies.
+      responses:
+        "200":
+          description: live
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LiveEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
   /health/ready:
     get:
       summary: Inference readiness
       operationId: aiHealthReady
-      description: SCRUM-130. Names postgres, redis, and the bucket.
+      description: SCRUM-130. Checks postgres, redis, and the bucket. Each check times out after 1 second. No Qdrant check.
       responses:
         "200":
           description: ready
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReadyEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
   /processing-jobs:
     post:
       summary: Submit processing job
@@ -125,6 +141,14 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LiveLabelsEnvelope" }
+              example:
+                data:
+                  labels:
+                    - { name: fight, min_score: 0.70, min_duration_ms: 1000, cooldown_s: 60 }
+                    - { name: fall, min_score: 0.65, min_duration_ms: 500, cooldown_s: 60 }
+                    - { name: running, min_score: 0.70, min_duration_ms: 1000, cooldown_s: 30 }
+                    - { name: crowd_formation, min_score: 0.60, min_duration_ms: 3000, cooldown_s: 120 }
+                    - { name: fire, min_score: 0.60, min_duration_ms: 1000, cooldown_s: 300 }
         "401": { $ref: "#/components/responses/Error" }
   /clip-jobs:
     post:
@@ -273,14 +297,29 @@ paths:
 
 components:
   securitySchemes:
+    shawafService:
+      type: apiKey
+      in: header
+      name: X-Shawaf-Service
+      description: Required value is backend.
+    shawafTimestamp:
+      type: apiKey
+      in: header
+      name: X-Shawaf-Timestamp
+      description: Unix timestamp in seconds.
     hmac:
       type: apiKey
       in: header
       name: X-Shawaf-Signature
       description: |
-        v1=<hex>. Also send X-Shawaf-Timestamp, X-Shawaf-Service: backend, and X-Request-Id.
+        v1=<hex>.
         string_to_sign is timestamp, METHOD, path, and hex(sha256(raw body)), each separated by a newline.
         Secret NEST_TO_AI_HMAC_SECRET. Clock skew over 300 seconds is 401 INVALID_SIGNATURE.
+    requestId:
+      type: apiKey
+      in: header
+      name: X-Request-Id
+      description: UUID identifying the request.
   parameters:
     JobId:
       name: jobId
@@ -314,6 +353,15 @@ components:
           properties:
             code: { type: string }
             message: { type: string }
+    LiveEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [status]
+          properties:
+            status: { type: string, enum: [ok] }
     ReadyEnvelope:
       type: object
       required: [data]
@@ -336,7 +384,7 @@ components:
         codec: { type: string }
     ProcessingJobRequest:
       type: object
-      required: [job_id, organization_id, video_id, camera_id, media_ref, content_type, size_bytes, pipeline_version, attempt, requested_at]
+      required: [job_id, organization_id, video_id, camera_id, media_ref, content_type, size_bytes, recorded_start_utc, pipeline_version, attempt, requested_at]
       properties:
         job_id: { type: string, format: uuid }
         organization_id: { type: string, format: uuid }
@@ -512,7 +560,7 @@ components:
         cooldown_s: { type: integer }
     LiveStream:
       type: object
-      required: [camera_id, mode, config_version, monitoring, rules]
+      required: [camera_id, mode, rtsp_url, config_version, monitoring, rules]
       properties:
         camera_id: { type: string, format: uuid }
         mode: { type: string, enum: [rtsp_pull, push] }
