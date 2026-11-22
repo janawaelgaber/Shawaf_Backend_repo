@@ -1,0 +1,672 @@
+openapi: 3.0.3
+info:
+  license: { name: Proprietary - SHAWAF graduation project }
+  title: SHAWAF Internal Inference API (FastAPI)
+  version: 1.0.0
+  description: |
+    Internal API of the inference service. Called only by NestJS.
+    Bodies match 02-internal-contracts.md and the current Jira tickets.
+    Phase 2 routes are included only where a ticket already defines the body.
+servers:
+  - url: http://inference-api:8000/internal/v1
+  - url: http://localhost:8000/internal/v1
+security:
+  - hmac: []
+paths:
+  /health/ready:
+    get:
+      summary: Inference readiness
+      operationId: aiHealthReady
+      description: SCRUM-130. Names postgres, redis, and the bucket.
+      responses:
+        "200":
+          description: ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReadyEnvelope" }
+  /processing-jobs:
+    post:
+      summary: Submit processing job
+      operationId: submitProcessingJob
+      description: |
+        SCRUM-134. The first accept is 202. The same body again is 200 with the same data object.
+        processing_run_id is generated here and stored in analytics.runs. state is the literal queued.
+        409 is JOB_CONFLICT and is not retried. 503 is PIPELINE_UNAVAILABLE and may be retried up to 3 times.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProcessingJobRequest" }
+      responses:
+        "202":
+          description: accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingJobAcceptedEnvelope" }
+        "200":
+          description: same body already accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingJobAcceptedEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /processing-jobs/{jobId}:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    get:
+      summary: Get processing job
+      operationId: getProcessingJob
+      description: Phase 2, SCRUM-128. Not required for Phase 1.
+      responses:
+        "200":
+          description: job state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingJobStateEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /processing-jobs/{jobId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    post:
+      summary: Cancel processing job
+      operationId: cancelProcessingJob
+      description: Phase 2, SCRUM-128. Best effort. Empty request body.
+      responses:
+        "200":
+          description: cancelled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingJobCancelledEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /search:
+    post:
+      summary: Internal search
+      operationId: internalSearch
+      description: |
+        SCRUM-131. Returns hits only. NestJS adds playback times and drops score.
+        This POST is not retried.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InternalSearchRequest" }
+      responses:
+        "200":
+          description: hits
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InternalSearchEnvelope" }
+              example:
+                data:
+                  hits: []
+        "401": { $ref: "#/components/responses/Error" }
+  /vocabulary:
+    get:
+      summary: Vocabulary labels
+      operationId: getVocabulary
+      description: SCRUM-131.
+      responses:
+        "200":
+          description: labels
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VocabularyEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /live-events/labels:
+    get:
+      summary: Live event labels
+      operationId: getLiveEventLabels
+      description: SCRUM-131. The five labels and their defaults.
+      responses:
+        "200":
+          description: labels
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LiveLabelsEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /clip-jobs:
+    post:
+      summary: Submit clip job
+      operationId: submitClipJob
+      description: |
+        SCRUM-82 and SCRUM-128. The request has no processing_run_id.
+        202 is queued and has no clip_ref. 200 is an existing ready clip.
+        An interval outside the video or longer than 120000 ms is 400 VALIDATION_FAILED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClipJobRequest" }
+      responses:
+        "202":
+          description: queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClipJobQueuedEnvelope" }
+        "200":
+          description: already cut
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClipJobReadyEnvelope" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /clip-jobs/{clipJobId}:
+    parameters:
+      - $ref: "#/components/parameters/ClipJobId"
+    get:
+      summary: Get clip job
+      operationId: getClipJob
+      description: Phase 2, SCRUM-128. clip_ref is null until ready.
+      responses:
+        "200":
+          description: clip state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClipJobStateEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /live-streams/{cameraId}:
+    parameters:
+      - $ref: "#/components/parameters/CameraId"
+    put:
+      summary: Store a live stream
+      operationId: putLiveStream
+      description: |
+        SCRUM-128. stream is the SCRUM-119 object. An older config_version is 409 LIVE_STREAM_CONFLICT.
+        worker_id is not written by this route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LiveStreamPutRequest" }
+      responses:
+        "200":
+          description: stored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LiveStreamPutEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Stop a live stream
+      operationId: deleteLiveStream
+      description: SCRUM-128. An unknown camera is still 200.
+      responses:
+        "200":
+          description: monitoring off
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LiveStreamDeleteEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /live-streams:
+    get:
+      summary: List live streams
+      operationId: listLiveStreams
+      description: SCRUM-128. open is the in-memory frame source, not a database column.
+      responses:
+        "200":
+          description: streams
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LiveStreamListEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /system/status:
+    get:
+      summary: Inference system status
+      operationId: getInferenceSystemStatus
+      description: Phase 2, SCRUM-130.
+      responses:
+        "200":
+          description: status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SystemStatusEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /models/active:
+    get:
+      summary: Active model manifests
+      operationId: getActiveModels
+      description: Phase 2, SCRUM-130. input_schema and output_schema are strings.
+      responses:
+        "200":
+          description: manifests
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActiveModelsEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /processing-segments:
+    post:
+      summary: Queue one upload segment
+      operationId: submitProcessingSegment
+      description: Phase 2, SCRUM-104 and SCRUM-128. Not used by the Phase 1 finished-file upload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProcessingSegmentRequest" }
+      responses:
+        "202":
+          description: queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcessingSegmentEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+  /queries/parse:
+    post:
+      summary: Parse a search query
+      operationId: parseQuery
+      description: Phase 2, SCRUM-128. time_range is null when the text has no time hint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParseQueryRequest" }
+      responses:
+        "200":
+          description: parsed query
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParseQueryEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    hmac:
+      type: apiKey
+      in: header
+      name: X-Shawaf-Signature
+      description: |
+        v1=<hex>. Also send X-Shawaf-Timestamp, X-Shawaf-Service: backend, and X-Request-Id.
+        string_to_sign is timestamp, METHOD, path, and hex(sha256(raw body)), each separated by a newline.
+        Secret NEST_TO_AI_HMAC_SECRET. Clock skew over 300 seconds is 401 INVALID_SIGNATURE.
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ClipJobId:
+      name: clipJobId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CameraId:
+      name: cameraId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Error:
+      description: error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code: { type: string }
+            message: { type: string }
+    ReadyEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [postgres, redis, bucket]
+          properties:
+            postgres: { type: string, example: up }
+            redis: { type: string, example: up }
+            bucket: { type: string, example: up }
+    MediaInfo:
+      type: object
+      required: [duration_ms, width, height, fps, codec]
+      properties:
+        duration_ms: { type: integer }
+        width: { type: integer }
+        height: { type: integer }
+        fps: { type: number }
+        codec: { type: string }
+    ProcessingJobRequest:
+      type: object
+      required: [job_id, organization_id, video_id, camera_id, media_ref, content_type, size_bytes, pipeline_version, attempt, requested_at]
+      properties:
+        job_id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        video_id: { type: string, format: uuid }
+        camera_id: { type: string, format: uuid }
+        media_ref: { type: string, example: videos/vid-uuid/original.mp4 }
+        content_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        recorded_start_utc: { type: string, format: date-time, nullable: true }
+        pipeline_version: { type: string, example: v1 }
+        attempt: { type: integer, minimum: 1 }
+        requested_at: { type: string, format: date-time }
+    ProcessingJobAcceptedEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [job_id, processing_run_id, state, accepted_at]
+          properties:
+            job_id: { type: string, format: uuid }
+            processing_run_id: { type: string, format: uuid }
+            state: { type: string, enum: [queued] }
+            accepted_at: { type: string, format: date-time }
+    ProcessingJobStateEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [job_id, processing_run_id, state, attempt, last_sequence]
+          properties:
+            job_id: { type: string, format: uuid }
+            processing_run_id: { type: string, format: uuid }
+            state: { type: string, enum: [queued, running, completed, failed, cancelled] }
+            stage: { type: string, nullable: true, enum: [probe, index] }
+            attempt: { type: integer }
+            media_info:
+              type: object
+              nullable: true
+              allOf: [{ $ref: "#/components/schemas/MediaInfo" }]
+            error: { type: string, nullable: true }
+            last_sequence: { type: integer }
+    ProcessingJobCancelledEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [job_id, state]
+          properties:
+            job_id: { type: string, format: uuid }
+            state: { type: string, enum: [cancelled] }
+    InternalSearchRequest:
+      type: object
+      required: [search_id, organization_id, query_text, authorized_video_ids, identity_reference, include_tentative, limit]
+      properties:
+        search_id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        query_text: { type: string }
+        authorized_video_ids:
+          type: array
+          items: { type: string, format: uuid }
+        identity_reference:
+          type: object
+          nullable: true
+          description: Phase 1 sends null. No properties are defined.
+        include_tentative: { type: boolean, enum: [true] }
+        limit: { type: integer, minimum: 1 }
+    SearchHit:
+      type: object
+      required: [video_id, match_start_ms, match_end_ms, score]
+      properties:
+        video_id: { type: string, format: uuid }
+        match_start_ms: { type: integer, minimum: 0 }
+        match_end_ms: { type: integer, minimum: 0 }
+        score: { type: number }
+    InternalSearchEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [hits]
+          properties:
+            hits:
+              type: array
+              items: { $ref: "#/components/schemas/SearchHit" }
+    VocabularyEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [labels]
+          properties:
+            labels:
+              type: array
+              items: { type: string }
+    LiveEventLabelName:
+      type: string
+      enum: [fight, fall, running, crowd_formation, fire]
+    LiveLabel:
+      type: object
+      required: [name, min_score, min_duration_ms, cooldown_s]
+      properties:
+        name: { $ref: "#/components/schemas/LiveEventLabelName" }
+        min_score: { type: number }
+        min_duration_ms: { type: integer }
+        cooldown_s: { type: integer }
+    LiveLabelsEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [labels]
+          properties:
+            labels:
+              type: array
+              items: { $ref: "#/components/schemas/LiveLabel" }
+    ClipJobRequest:
+      type: object
+      required: [clip_job_id, organization_id, result_id, video_id, media_ref, playback_start_ms, playback_end_ms, encoding_profile]
+      properties:
+        clip_job_id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        result_id: { type: string, format: uuid }
+        video_id: { type: string, format: uuid }
+        media_ref: { type: string }
+        playback_start_ms: { type: integer, minimum: 0 }
+        playback_end_ms: { type: integer, minimum: 0 }
+        encoding_profile: { type: string, enum: [h264_720p] }
+    ClipJobQueuedEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [clip_job_id, state]
+          properties:
+            clip_job_id: { type: string, format: uuid }
+            state: { type: string, enum: [queued] }
+    ClipJobReadyEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [clip_job_id, state, clip_ref]
+          properties:
+            clip_job_id: { type: string, format: uuid }
+            state: { type: string, enum: [ready] }
+            clip_ref: { type: string }
+    ClipJobStateEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [clip_job_id, state]
+          properties:
+            clip_job_id: { type: string, format: uuid }
+            state: { type: string, enum: [queued, running, ready, failed] }
+            clip_ref: { type: string, nullable: true }
+    DetectionRule:
+      type: object
+      required: [label, min_score, min_duration_ms, cooldown_s]
+      properties:
+        label: { $ref: "#/components/schemas/LiveEventLabelName" }
+        min_score: { type: number }
+        min_duration_ms: { type: integer }
+        cooldown_s: { type: integer }
+    LiveStream:
+      type: object
+      required: [camera_id, mode, config_version, monitoring, rules]
+      properties:
+        camera_id: { type: string, format: uuid }
+        mode: { type: string, enum: [rtsp_pull, push] }
+        rtsp_url: { type: string, nullable: true }
+        config_version: { type: integer }
+        monitoring: { type: string, enum: [on, off] }
+        rules:
+          type: array
+          items: { $ref: "#/components/schemas/DetectionRule" }
+    LiveStreamPutRequest:
+      type: object
+      required: [organization_id, stream]
+      properties:
+        organization_id: { type: string, format: uuid }
+        stream: { $ref: "#/components/schemas/LiveStream" }
+    LiveStreamPutEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [camera_id, config_version, monitoring]
+          properties:
+            camera_id: { type: string, format: uuid }
+            config_version: { type: integer }
+            monitoring: { type: string, enum: [on, off] }
+            worker_id: { type: string, nullable: true }
+    LiveStreamDeleteEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [camera_id, monitoring]
+          properties:
+            camera_id: { type: string, format: uuid }
+            monitoring: { type: string, enum: [off] }
+    LiveStreamListItem:
+      type: object
+      required: [camera_id, config_version, monitoring, open]
+      properties:
+        camera_id: { type: string, format: uuid }
+        config_version: { type: integer }
+        monitoring: { type: string, enum: [on, off] }
+        worker_id: { type: string, nullable: true }
+        open: { type: boolean }
+    LiveStreamListEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/LiveStreamListItem" }
+    SystemStatusEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [status, pipeline_version, queue_depth, workers_online, package_mode, live]
+          properties:
+            status: { type: string, example: ok }
+            pipeline_version: { type: string, example: v1 }
+            queue_depth:
+              type: object
+              additionalProperties: { type: integer }
+            workers_online: { type: integer }
+            package_mode: { type: string, enum: [unconnected, real] }
+            live:
+              type: object
+              required: [workers_online, streams_monitored]
+              properties:
+                workers_online: { type: integer }
+                streams_monitored: { type: integer }
+    ModelManifest:
+      type: object
+      required: [name, version, hash, input_schema, output_schema]
+      properties:
+        name: { type: string }
+        version: { type: string }
+        hash: { type: string }
+        input_schema: { type: string }
+        output_schema: { type: string }
+    ActiveModelsEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [package_mode, manifests]
+          properties:
+            package_mode:
+              type: object
+              required: [mode, index, search, events]
+              properties:
+                mode: { type: string, enum: [unconnected, real] }
+                index: { type: string }
+                search: { type: string }
+                events: { type: string }
+            manifests:
+              type: array
+              items: { $ref: "#/components/schemas/ModelManifest" }
+    ProcessingSegmentRequest:
+      type: object
+      required: [upload_id, video_id, organization_id, segment_number, media_ref, start_byte, end_byte, checksum_sha256]
+      properties:
+        upload_id: { type: string, format: uuid }
+        video_id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        segment_number: { type: integer }
+        media_ref: { type: string }
+        start_byte: { type: integer }
+        end_byte: { type: integer }
+        checksum_sha256: { type: string }
+    ProcessingSegmentEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [upload_id, segment_number, state]
+          properties:
+            upload_id: { type: string, format: uuid }
+            segment_number: { type: integer }
+            state: { type: string, enum: [queued] }
+    ParseQueryRequest:
+      type: object
+      required: [organization_id, query_text]
+      properties:
+        organization_id: { type: string, format: uuid }
+        query_text: { type: string }
+    ParseQueryEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [query_text, camera_ids, unknown_terms]
+          properties:
+            query_text: { type: string }
+            time_range:
+              nullable: true
+              type: object
+              required: [start_utc, end_utc]
+              properties:
+                start_utc: { type: string, format: date-time }
+                end_utc: { type: string, format: date-time }
+            camera_ids:
+              type: array
+              items: { type: string, format: uuid }
+            unknown_terms:
+              type: array
+              items: { type: string }

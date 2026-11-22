@@ -13,10 +13,16 @@ dependencies = [
   "sqlalchemy>=2.0",
   "alembic>=1.14",
   "psycopg[binary]>=3.2",
+  "pydantic>=2.0",
+  "email-validator>=2.0",
+  "jsonschema[format]>=4.23,<5",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = [
+  "pytest>=8.0",
+  "datamodel-code-generator==0.99.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["ai*"]

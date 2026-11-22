@@ -6,7 +6,11 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+
+    "contracts:generate": "json2ts -i ../../contracts/processing-job.schema.json -o src/inference-client/generated/processing-job.d.ts --unreachableDefinitions && json2ts -i ../../contracts/auth.schema.json -o src/inference-client/generated/auth.d.ts --unreachableDefinitions && json2ts -i ../../contracts/search.schema.json -o src/inference-client/generated/search.d.ts --unreachableDefinitions && json2ts -i ../../contracts/callbacks.schema.json -o src/inference-client/generated/callbacks.d.ts --unreachableDefinitions && json2ts -i ../../contracts/live-event.schema.json -o src/inference-client/generated/live-event.d.ts --unreachableDefinitions",
+
+    "prism:mock": "prism mock -p 4010 ../../contracts/internal-inference-api.v1.yaml"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",
@@ -18,8 +22,10 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
+    "@stoplight/prism-cli": "^5.16.0",
     "@types/express": "^5.0.3",
     "@types/node": "^22.18.6",
+    "json-schema-to-typescript": "^16.0.0",
     "prisma": "^6.16.2",
     "typescript": "^5.9.2"
   }
