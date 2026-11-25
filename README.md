@@ -17,7 +17,7 @@ This is the backend code repository. NestJS, FastAPI, workers, and the local sta
 Clone the repository and switch to your own branch from the table. Jana uses `jana`. Rokayya uses `rokayya`. Labib uses `labib`. Omar uses `omar`. Ola uses `ola`.
 
 ```bash
-git clone https://github.com/Nabillco/shawaf-backend.git
+git clone https://github.com/janawaelgaber/Shawaf_Backend_repo.git
 cd shawaf-backend
 git checkout <your-branch>
 ```
