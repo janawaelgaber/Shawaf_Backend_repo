@@ -1,5 +1,8 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
+import { StorageService } from './storage.service';
 
-/** Rokayya. SCRUM-31. Bucket shawaf-media. Key videos/{video_id}/original.mp4. */
-@Module({})
+@Module({
+  providers: [StorageService],
+  exports: [StorageService],
+})
 export class StorageModule {}

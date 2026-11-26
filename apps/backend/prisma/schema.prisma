@@ -16,24 +16,24 @@ datasource db {
 }
 
 model Organization {
-  id           String         @id @default(uuid()) @db.Uuid
-  name         String
-  kind         String
-  memberships  Membership[]
-  sites        Site[]
-  cameras      Camera[]
+  id            String        @id @default(uuid()) @db.Uuid
+  name          String
+  kind          String
+  memberships   Membership[]
+  sites         Site[]
+  cameras       Camera[]
   searchQueries SearchQuery[]
-  alerts       Alert[]
+  alerts        Alert[]
 
   @@map("organizations")
   @@schema("app")
 }
 
 model User {
-  id           String         @id @default(uuid()) @db.Uuid
+  id           String        @id @default(uuid()) @db.Uuid
   email        String
-  passwordHash String         @map("password_hash")
-  fullName     String         @map("full_name")
+  passwordHash String        @map("password_hash")
+  fullName     String        @map("full_name")
   disabled     Boolean
   memberships  Membership[]
   cameraGrants CameraGrant[]
@@ -88,6 +88,7 @@ model Camera {
   grants         CameraGrant[]
   videos         Video[]
   alerts         Alert[]
+  stream         CameraStream?
 
   @@map("cameras")
   @@schema("app")
@@ -168,5 +169,18 @@ model Alert {
 
   @@unique([organizationId, externalEventId])
   @@map("alerts")
+  @@schema("app")
+}
+
+model CameraStream {
+  cameraId      String  @id @map("camera_id") @db.Uuid
+  mode          String
+  rtspUrl       String? @map("rtsp_url")
+  configVersion Int     @default(1) @map("config_version")
+  monitoring    String  @default("off")
+  rules         Json    @default("[]")
+  camera        Camera  @relation(fields: [cameraId], references: [id])
+
+  @@map("camera_streams")
   @@schema("app")
 }

@@ -12,6 +12,7 @@ export const ErrorCode = {
   JOB_NOT_FOUND: { status: 404, code: 'JOB_NOT_FOUND' },
   PIPELINE_UNAVAILABLE: { status: 503, code: 'PIPELINE_UNAVAILABLE' },
   VALIDATION_FAILED: { status: 400, code: 'VALIDATION_FAILED' },
+  LIVE_EVENT_LABEL_UNKNOWN: { status: 400, code: 'LIVE_EVENT_LABEL_UNKNOWN' },
   LIVE_STREAM_CONFLICT: { status: 409, code: 'LIVE_STREAM_CONFLICT' },
 } as const;
 
