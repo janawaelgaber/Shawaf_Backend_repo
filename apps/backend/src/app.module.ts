@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { RequestIdMiddleware } from './common/http/request-id.middleware';
 import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { HealthModule } from './health/health.module';
@@ -16,6 +17,7 @@ import { AlertsModule } from './alerts/alerts.module';
 
 @Module({
   imports: [
+    PrismaModule,
     AuthModule,
     UsersModule,
     OrganizationsModule,

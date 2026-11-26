@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
+import { CamerasController } from './cameras.controller';
+import { CamerasService } from './cameras.service';
 
-/** Rokayya. Sites, cameras, and the SCRUM-119 stream object. SCRUM-30 and SCRUM-122. */
-@Module({})
+@Module({
+  controllers: [CamerasController],
+  providers: [CamerasService],
+  exports: [CamerasService],
+})
 export class CamerasModule {}
