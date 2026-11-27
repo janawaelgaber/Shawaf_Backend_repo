@@ -15,9 +15,17 @@ services:
     image: redis:7
     ports:
       - "6379:6379"
+  
+  proxy:
+    image: nginx:stable
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
 
   minio:
-    image: minio/minio
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: shawaf_local
@@ -28,8 +36,8 @@ services:
     volumes:
       - minio-data:/data
 
-  minio-bucket:
-    image: minio/mc
+  minio-init:
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     depends_on:
       - minio
     entrypoint:
@@ -38,6 +46,67 @@ services:
       - |
         until mc alias set local http://minio:9000 shawaf_local shawaf_local; do sleep 1; done
         mc mb -p local/shawaf-media
+  minio-cors:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-}"
+      AWS_ACCESS_KEY_ID: shawaf_local
+      AWS_SECRET_ACCESS_KEY: shawaf_local
+    volumes:
+      - ./minio:/opt/shawaf/minio:ro
+    command: ["python", "/opt/shawaf/minio/apply_cors.py"]
+
+  inference-api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-}"
+    volumes:
+      - ./minio:/opt/shawaf/minio:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - minio
+  inference-worker-cpu:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    command: ["celery", "-A", "ai.workers.celery_app:celery_app", "worker", "--loglevel=info", "-Q", "pipeline.cpu,media.clips,callbacks"]
+    environment:
+      AI_DATABASE_URL: "${AI_DATABASE_URL:-postgresql://shawaf_ai:shawaf_ai@postgres:5432/shawaf}"
+      AI_TO_NEST_HMAC_SECRET: "${AI_TO_NEST_HMAC_SECRET:-local-ai-to-nest}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+    depends_on:
+      - redis
+
+  inference-worker-gpu:
+    profiles: ["gpu"]
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    command: ["celery", "-A", "ai.workers.celery_app:celery_app", "worker", "--loglevel=info", "-Q", "pipeline.gpu", "--concurrency=1"]
+    environment:
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+    depends_on:
+      - redis
+
+  inference-beat:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    command: ["celery", "-A", "ai.workers.celery_app:celery_app", "beat", "--loglevel=info"]
+    environment:
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+    depends_on:
+      - redis
 
 volumes:
   postgres-data:

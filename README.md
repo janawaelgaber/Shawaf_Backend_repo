@@ -75,13 +75,11 @@ scripts/          repo_tree.py checks this layout (SCRUM-120).
 
 `apps/api`, `apps/ml-api`, and `apps/worker` must not exist. Check the layout with `python scripts/repo_tree.py`.
 
-The processes start. The ticket handlers are still empty. Each member fills the module named on their ticket. Do not add a column, route, or error code the ticket does not name.
+Each member fills the module named on their ticket. See the [deployment README](deployment/README.md) for Omar's completed implementation, local checks, and pending integration.
 
 ## Run it locally
 
-```bash
-docker compose -f deployment/docker-compose.yml up -d
-```
+Follow the [local deployment instructions](deployment/README.md#start-the-stack) to set up Compose and start the stack.
 
 Copy `.env.example` to `.env` in `apps/backend` before using Prisma. NestJS does not need the database just to boot.
 

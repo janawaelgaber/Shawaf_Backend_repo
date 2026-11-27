@@ -1,9 +1,9 @@
 """FastAPI on port 8000. Omar owns the process. Ola owns search, vocabulary, and labels."""
 
 from fastapi import FastAPI
-
+from ai.api.routes.health import router as health_router
 app = FastAPI(title="SHAWAF inference")
-
+app.include_router(health_router)
 # Phase 1 routes, all under /internal/v1. Add the handler on the owning ticket.
 # POST /processing-jobs                         Omar, SCRUM-134
 # POST /search                                  Ola, SCRUM-139
